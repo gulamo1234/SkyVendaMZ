@@ -21,7 +21,7 @@ apscheduler
 typing-inspect
 fastapi-utils
 mysql-connector-python
-psycopg2
+psycopg2-binary
 pillow
 huggingface_hub
 python-Levenshtein
