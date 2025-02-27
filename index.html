@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baixar Vídeo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+        }
+        #download-link {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Baixar Vídeo</h1>
+    <input type="text" id="video-url" placeholder="Cole o link do vídeo">
+    <button onclick="downloadVideo()">Baixar</button>
+
+    <div id="download-link">
+        <p>Seu vídeo está pronto para download:</p>
+        <a id="video-link" href="#" target="_blank">Clique aqui para baixar</a>
+    </div>
+
+    <script>
+        async function downloadVideo() {
+            const videoUrl = document.getElementById("video-url").value;
+            if (!videoUrl) {
+                alert("Por favor, insira um link de vídeo.");
+                return;
+            }
+
+            const response = await fetch("http://34.57.239.46/download-video/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ url: videoUrl })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                const downloadLink = document.getElementById("video-link");
+                downloadLink.href = "http://34.57.239.46" + data.download_url;
+                document.getElementById("download-link").style.display = "block";
+            } else {
+                alert("Erro ao baixar o vídeo: " + data.detail);
+            }
+        }
+    </script>
+
+</body>
+</html>

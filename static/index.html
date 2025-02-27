@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sky Messager Chat</title>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .online-users { float: left; width: 200px; }
+        .chat-area { margin-left: 220px; }
+        #messages { height: 300px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; }
+        .online-users li { 
+            cursor: pointer;
+            padding: 5px 10px;
+            margin: 2px 0;
+            border-radius: 4px;
+        }
+        .online-users li:hover {
+            background-color: #f0f0f0;
+        }
+        .online-users li.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-area" id="loginArea">
+            <input type="text" id="username" placeholder="Username">
+            <input type="text" id="skyId" placeholder="Sky ID">
+            <button onclick="connect()">Connect</button>
+        </div>
+        
+        <div class="chat-container" id="chatContainer" style="display:none">
+            <div class="online-users">
+                <h3>Online Users</h3>
+                <ul id="usersList"></ul>
+            </div>
+            
+            <div class="chat-area">
+                <h3>Chat with: <span id="selectedUser">Nobody selected</span></h3>
+                <div id="messages"></div>
+                <input type="text" id="messageInput" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+
+    <script>
+        let ws;
+        let selectedUser = null;
+
+        async function connect() {
+            const username = document.getElementById('username').value;
+            const skyId = document.getElementById('skyId').value;
+            
+            ws = new WebSocket(`ws://localhost:8000/ws/${skyId}/${username}`);
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === "notification") {
+                    showNotification(data.data);
+                    // Atualizar lista de usuários quando alguém conectar
+                    if (data.data.type === "user_connected") {
+                        updateOnlineUsers();
+                    }
+                } else {
+                    const messagesDiv = document.getElementById('messages');
+                    messagesDiv.innerHTML += `<p><strong>${data.from_user}:</strong> ${data.message}</p>`;
+                }
+            };
+
+            document.getElementById('loginArea').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'block';
+            
+            updateOnlineUsers();
+            setInterval(updateOnlineUsers, 5000);
+        }
+
+        async function updateOnlineUsers() {
+            const response = await fetch('/online-users');
+            const users = await response.json();
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            
+            users.forEach(user => {
+                if (user.sky_user_id !== document.getElementById('skyId').value) {
+                    const li = document.createElement('li');
+                    li.textContent = user.username;
+                    li.onclick = () => selectUser(user, li);
+                    if (selectedUser && selectedUser.sky_user_id === user.sky_user_id) {
+                        li.classList.add('selected');
+                    }
+                    usersList.appendChild(li);
+                }
+            });
+        }
+
+        function selectUser(user, element) {
+            // Remove selected class from all users
+            const allUsers = document.querySelectorAll('#usersList li');
+            allUsers.forEach(userEl => userEl.classList.remove('selected'));
+            
+            // Add selected class to clicked user
+            element.classList.add('selected');
+            
+            selectedUser = user;
+            document.getElementById('selectedUser').textContent = user.username;
+        }
+
+        function sendMessage() {
+            if (!selectedUser) {
+                alert('Please select a user first!');
+                return;
+            }
+            
+            const message = document.getElementById('messageInput').value;
+            ws.send(JSON.stringify({
+                to_user: selectedUser.sky_user_id,
+                content: message
+            }));
+            
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+            document.getElementById('messageInput').value = '';
+        }
+
+        function showNotification(data) {
+            const notificationDiv = document.getElementById('notification');
+            notificationDiv.textContent = data.message;
+            notificationDiv.style.display = 'block';
+            
+            // Esconder após 3 segundos
+            setTimeout(() => {
+                notificationDiv.style.display = 'none';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
